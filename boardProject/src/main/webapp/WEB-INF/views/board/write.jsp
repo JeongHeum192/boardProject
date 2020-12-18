@@ -31,7 +31,7 @@
 	</tr> 
 	<tr> 
 		<th>첨부파일</th> 
-		<td> <input type="file" name="photo" id="photo" class="form-control input-sm" > </td> 
+		<td> <input type="file" name="photofile" id="photofile" class="form-control input-sm" > </td> 
 	</tr> 
 	<tr> 
 		<td colspan="2"> <textarea style="height: 150px;" name="content" class="form-control"> </textarea> </td> 

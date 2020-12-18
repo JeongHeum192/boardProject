@@ -1,5 +1,6 @@
 package com.boardProject.controller;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.boardProject.domain.BoardReplyVO;
 import com.boardProject.domain.BoardVO;
 import com.boardProject.service.BoardService;
 
@@ -27,7 +29,6 @@ public class BoardController {
 	
 	 @RequestMapping(value = "/list", method = RequestMethod.GET)
 	 public void getList(Model model, @RequestParam("num") int num) throws Exception {
-		 System.out.print("listPage");
 		 //게시물 총 갯수
 		 int count = service.count();		 
 		 //한 페이지에 출력될 게시물 개수
@@ -76,26 +77,24 @@ public class BoardController {
 	 
 	 @RequestMapping(value = "/write", method = RequestMethod.POST)
 	 public String writeInsert(@ModelAttribute BoardVO board, HttpServletRequest request) throws Exception {
-		 if(!(board.getPhoto().getOriginalFilename().equals(""))) {
+		 if(!(board.getPhotofile().getOriginalFilename().equals(""))) {
 			 //photo: 멀티파트:콘솔에 찍히게 
-			 System.out.println("이미지명: "+ board.getPhoto().getOriginalFilename());
+			 System.out.println("이미지명: "+ board.getPhotofile().getOriginalFilename());
 			 
 			 //톰캣서버의 경로를 구해야 프로젝트 경로를 구할수있다 
 			 //web-inf/save경로 
 			 String path=request.getSession().getServletContext().getRealPath("/WEB-INF/save"); 
-			 System.out.println("path="+path); 
-			 //이미지를 path에저장 
 			 
 			 FileOutputStream fos = null;
 	
 			 try { 
-				 fos=new FileOutputStream(path+"\\"+board.getPhoto().getOriginalFilename()); 
-				 byte []uploadData =board.getPhoto().getBytes(); fos.write(uploadData); 
-				 } 
-			 catch (FileNotFoundException e) { // TODO Auto-generated catch block 
+				 fos=new FileOutputStream(path + "\\" + board.getPhotofile().getOriginalFilename()); 
+				 byte []uploadData =board.getPhotofile().getBytes(); fos.write(uploadData); 
+			 } 
+			 catch (FileNotFoundException e) { 
 				 e.printStackTrace(); 
 			 } 
-			 catch (IOException e) { // TODO Auto-generated catch block 
+			 catch (IOException e) { 
 				 e.printStackTrace(); 
 			 }
 			 finally { 
@@ -103,15 +102,11 @@ public class BoardController {
 					 fos.close(); 
 				 } 
 				 catch (IOException e) { 
-					 // TODO Auto-generated catch block 
 					 e.printStackTrace(); 
 			     } 
-				 }
-			 //board다 들어오는데 이미지 이름 안들어옴 
-			 //board 이름을 dto에 저장 
-			 //db에 저장해야 나중에 가져옴
+			 }
 		 
-			 board.setPhotoname(board.getPhoto().getOriginalFilename());
+			 board.setPhoto(board.getPhotofile().getOriginalFilename());
 		 }
 		 service.write(board);
 		 
@@ -120,8 +115,11 @@ public class BoardController {
 	 
 	 @RequestMapping(value= "/content", method = RequestMethod.GET) 
 	 public void content(@RequestParam("bNo") int bNo, Model model) throws Exception{
+		 Integer.toString(bNo);
 		 BoardVO content  = service.content(bNo);
 		 
+		 List<BoardReplyVO> replyList = service.selectBoardReplyList(bNo);
+		 model.addAttribute("replylist", replyList);
 		 model.addAttribute("content", content);
 	 }
 	 
@@ -133,10 +131,49 @@ public class BoardController {
 	 }
 	 
 	 @RequestMapping(value= "/delete", method = RequestMethod.POST) 
-	 public String delete(@RequestParam("bNo") int bNo) throws Exception{
-		 service.delete(bNo);
+	 public String delete(@RequestParam("bNo") int bNo, HttpServletRequest request) throws Exception{
+		 BoardVO boardInfo  = service.content(bNo);
+
+/*		 //파일 경로에서 사진 삭제
+		 String fileName = boardInfo.getPhoto();
+		 String path=request.getSession().getServletContext().getRealPath("/WEB-INF/save"); 
+		 
+		 File file = new File(path + "\\" + fileName); 
+		 if(file.exists()) { 
+			 file.delete();
+		 }*/
+		 
+		 BoardVO board = new BoardVO();
+		 board.setbNo(bNo);
+		 
+		 service.delete(board);
 		 
 		 return "redirect:/board/list?num=1";
 	 }
 	
+	 @RequestMapping(value= "/insertReply", method = RequestMethod.POST) 
+	 public String insertReply(Model model, @ModelAttribute BoardReplyVO boardReply) throws Exception{
+		 int bNo = Integer.parseInt((boardReply.getbNo()));
+	
+		 service.insertBoardReply(boardReply);
+	 
+		 BoardVO content  = service.content(bNo);
+		 model.addAttribute("content", content);
+		 
+		 return "redirect:/board/content?bNo=" + boardReply.getbNo();
+	 }
+	 
+	 @RequestMapping(value= "/deleteReply", method = RequestMethod.POST) 
+	 public String deleteReply(Model model, @ModelAttribute BoardReplyVO boardReply) throws Exception{
+		 int bNo = Integer.parseInt((boardReply.getbNo()));
+		 
+		 if(!service.deleteBoardReply(boardReply)) {
+			 return "";
+		 }
+		 
+		 BoardVO content  = service.content(bNo);
+		 model.addAttribute("content", content);
+		 
+		 return "redirect:/board/content?bNo=" + boardReply.getbNo();
+	 }
 }

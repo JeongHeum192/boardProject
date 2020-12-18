@@ -5,41 +5,70 @@
 <mapper namespace="com.boardProject.mappers.board">
 	<!-- 게시물 목록 -->
 	<select id="list" resultType="com.boardProject.domain.BoardVO">
-	 SELECT bNo
-	       ,title
-	       ,content
-	       ,writer
-	       ,regDate
-	       ,updDate
+	 SELECT BNO
+	 	   ,TITLE
+	 	   ,CONTENT
+	 	   ,WRITER
+	 	   ,REGDATE
+	       ,UPDDATE
 	 FROM SPRING2.TBOARD
 	</select>
 	
 	<!-- 게시물 목록 + 페이징 -->
 	<select id="listPage" parameterType="hashMap" resultType="com.boardProject.domain.BoardVO">
-	 SELECT bNo
-	       ,title
-	       ,writer
-	       ,regDate
-	       ,updDate
+	 SELECT BNO
+	       ,TITLE
+	       ,WRITER
+	       ,REGDATE
+	       ,UPDDATE
 	 FROM SPRING2.TBOARD 
 	 ORDER BY bNo DESC
 	 LIMIT #{displayPost}, #{postNum}
 	</select>
 	
+	<!--  게시물 최고 순서 조회 -->
+	<select id="selectBoardNo" resultType="int">
+    SELECT IFNULL(MAX(BNO),0) AS BNO
+    FROM SPRING2.TBOARD
+    </select>
+	
 	<!-- 게시물 작성 -->
 	<insert id="write" parameterType="com.boardProject.domain.BoardVO">
-	INSERT INTO SPRING2.TBOARD(title, content, writer, photoname)
-		VALUES (#{title}, #{content}, #{writer}, #{photoname})
+	INSERT INTO SPRING2.TBOARD(BNO, TITLE, CONTENT, WRITER, PHOTO, REGDATE)
+		VALUES (#{bNo}, #{title}, #{content}, #{writer}, #{photo}, NOW())
 	</insert>
+	
+	<!-- 게시물 이미지 첨부 -->
+	<insert id="writeFile" parameterType="com.boardProject.domain.BoardVO">
+	INSERT INTO SPRING2.TBOARDFILE(BNO, PHOTO, EXTENSION, WRITER, REGDATE)
+		VALUES (#{bNo}, #{photo}, #{extension}, #{writer}, NOW())
+	</insert>
+	
+	<!-- 게시물 히스토리 작성 -->
+	<insert id="writeHist" parameterType="com.boardProject.domain.BoardVO">
+	INSERT INTO SPRING2.TBOARDHIST(BNO, TITLE, CONTENT, WRITER, PHOTO, TYPE, REGDATE)
+		VALUES (#{bNo}, #{title}, #{content}, #{writer}, #{photo}, #{type}, NOW())
+	</insert>
+	
+	<!-- 게시물 히스토리 수정 -->
+	<update id="modifyHist" parameterType="com.boardProject.domain.BoardVO">
+	UPDATE SPRING2.TBOARDHIST
+	SET TYPE = #{type}
+	   ,TITLE = #{title}
+	   ,CONTENT = #{content}
+	   ,UPDDATE = NOW()
+	WHERE BNO = #{bNo}
+	
+	</update>
 	
 	<!-- 게시물 조회-->
 	<select id="content" parameterType="int" resultType="com.boardProject.domain.BoardVO">
-	SELECT bNo
-	      ,title
-	      ,content
-	      ,writer
-	      ,regDate
-	      ,photoname
+	SELECT BNO
+	      ,TITLE
+	      ,CONTENT
+	      ,WRITER
+	      ,REGDATE
+	      ,PHOTO
 	FROM SPRING2.TBOARD
 	WHERE bNo = #{bNo}
 	</select>
@@ -47,23 +76,124 @@
 	<!-- 게시물 수정-->
 	<update id="modify" parameterType="com.boardProject.domain.BoardVO">
 	UPDATE SPRING2.TBOARD
-	SET title = #{title}
-	   ,content = #{content}
-	   ,updDate = NOW()
-	WHERE bNo = #{bNo}
+	SET TITLE = #{title}
+	   ,CONTENT = #{content}
+	   ,UPDDATE = NOW()
+	WHERE BNO = #{bNo}
 	</update>
 	
 	<!--  게시물 삭제 -->
-	<delete id="delete" parameterType="int">
+	<delete id="delete" parameterType="com.boardProject.domain.BoardVO">
 	DELETE 
 	FROM SPRING2.TBOARD 
-	WHERE bNo = #{bNo}
+	WHERE BNO = #{bNo}
 	</delete>
 	
 	<!--  게시물 총 갯수 -->
 	<select id="count" resultType="int">
-	 SELECT COUNT(bNo) 
-	 FROM SPRING2.TBOARD 
+	SELECT COUNT(BNO) 
+	FROM SPRING2.TBOARD 
 	</select>
 	
+	<!--  게시물 부모 댓글 조회 -->
+	<select id="selectBoardReplyParent" parameterType="String" resultType="com.boardProject.domain.BoardReplyVO">
+    SELECT BNO
+          ,REDEPTH+1 AS REDEPTH
+          ,IFNULL((SELECT MAX(REORDER) FROM SPRING2.TBOARDREPLY WHERE REPARENT=TB.RENO), TB.REORDER) AS REORDER
+    FROM SPRING2.TBOARDREPLY TB
+    WHERE RENO = #{reParent}
+	</select>
+	
+	<!-- 게시물 댓글 순서 업데이트-->
+	<update id="updateBoardReplyOrder" parameterType="com.boardProject.domain.BoardReplyVO">
+    UPDATE SPRING2.TBOARDREPLY
+    SET REORDER = REORDER + 1
+    WHERE BNO = #{bNo} AND REORDER >= #{reOrder}  
+	</update>
+	
+	<!--  게시물 댓글 최고 순서 조회 -->
+	<select id="selectBoardReplyMaxOrder" parameterType="String" resultType="int">
+    SELECT IFNULL(MAX(REORDER),0) + 1
+    FROM SPRING2.TBOARDREPLY
+    WHERE BNO = #{bNo}
+	</select>
+	
+	<!-- 게시물 댓글 목록 -->
+	<select id="selectBoardReplyList" parameterType="int" resultType="com.boardProject.domain.BoardReplyVO">
+	 SELECT BNO
+	       ,RENO
+	       ,REMEMO
+	       ,REDEPTH
+	       ,REORDER
+	       ,REPARENT
+	       ,REGDATE
+	 FROM SPRING2.TBOARDREPLY
+	 WHERE BNO = #{bNo}
+	 ORDER BY REORDER 
+	</select>
+		
+	<!-- 게시물 댓글 작성 -->
+	<insert id="insertBoardReply" parameterType="com.boardProject.domain.BoardReplyVO">
+		<selectKey resultType="String" keyProperty="reNo" order="BEFORE">
+        SELECT IFNULL(MAX(RENO),0)+1 AS RENO
+        FROM SPRING2.TBOARDREPLY
+        </selectKey>
+		
+		INSERT INTO SPRING2.TBOARDREPLY(BNO, RENO, REMEMO, REGDATE, REORDER, REPARENT, REDEPTH)
+        VALUES (#{bNo}, #{reNo}, #{reMemo}, NOW(), #{reOrder},
+                <choose>
+                	<when test="reParent==null">#{reNo}, 0</when>
+                    <otherwise>#{reParent}, #{reDepth}</otherwise>
+                </choose>
+               )
+	</insert>
+	
+	<!-- 게시물 댓글 히스토리 작성 -->
+	<insert id="insertBoardReplyHist" parameterType="com.boardProject.domain.BoardReplyVO">
+		<selectKey resultType="String" keyProperty="reNo" order="BEFORE">
+        SELECT IFNULL(MAX(RENO),0)+1 AS RENO
+        FROM SPRING2.TBOARDREPLYHIST
+        </selectKey>
+		
+		INSERT INTO SPRING2.TBOARDREPLYHIST(BNO, RENO, REMEMO, TYPE, REGDATE, REPARENT, REDEPTH)
+        VALUES (#{bNo}, #{reNo}, #{reMemo}, #{type}, NOW(),
+                <choose>
+                	<when test="reParent==null">#{reNo}, 0</when>
+                    <otherwise>#{reParent}, #{reDepth}</otherwise>
+                </choose>
+               )
+	</insert>
+	
+	<!-- 게시물 댓글 히스토리 전체 수정 -->
+	<update id="modifyBoardReplyHistALL" parameterType="com.boardProject.domain.BoardReplyVO">
+	UPDATE SPRING2.TBOARDREPLYHIST
+	SET TYPE = #{type}
+	   ,UPDDATE = NOW()
+	WHERE BNO = #{bNo}
+	AND TYPE != 2
+	</update>
+	
+	<!-- 게시물 댓글 히스토리 수정 -->
+	<update id="modifyBoardReplyHist" parameterType="com.boardProject.domain.BoardReplyVO">
+	UPDATE SPRING2.TBOARDREPLYHIST
+	SET TYPE = #{type}
+	   ,UPDDATE = NOW()
+	WHERE BNO = #{bNo}
+	AND reNo = #{reNo}
+	</update>
+	
+	<!-- 게시물댓글 삭제 -->
+	<delete id="deleteBoardReply" parameterType="com.boardProject.domain.BoardReplyVO">
+	DELETE 
+	FROM SPRING2.TBOARDREPLY 
+	WHERE BNO = #{bNo}
+	AND RENO = #{reNo}
+	</delete>
+	
+	<select id="selectBoardReplyChild" resultType="int" parameterType="com.boardProject.domain.BoardReplyVO">
+    SELECT COUNT(*) 
+    FROM SPRING2.TBOARDREPLY 
+    WHERE REPARENT = #{reNo} 
+    AND RENO != #{reNo}
+    </select>
 </mapper>

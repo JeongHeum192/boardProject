@@ -9,9 +9,11 @@ public class BoardVO {
 	private String title;
 	private String content;
 	private String writer;
-	private String photoname;
-	
-	private MultipartFile photo;
+	private String photo;
+
+	private String extension;
+	private int type;
+	private MultipartFile photofile;
 	private Timestamp regDate;
 	private Timestamp updDate;
 	
@@ -39,17 +41,29 @@ public class BoardVO {
 	public void setWriter(String writer) {
 		this.writer = writer;
 	}
-	public String getPhotoname() {
-		return photoname;
-	}
-	public void setPhotoname(String photoname) {
-		this.photoname = photoname;
-	}
-	public MultipartFile getPhoto() {
+	public String getPhoto() {
 		return photo;
 	}
-	public void setPhoto(MultipartFile photo) {
+	public void setPhoto(String photo) {
 		this.photo = photo;
+	}
+	public String getExtension() {
+		return extension;
+	}
+	public void setExtension(String extension) {
+		this.extension = extension;
+	}
+	public int getType() {
+		return type;
+	}
+	public void setType(int type) {
+		this.type = type;
+	}
+	public MultipartFile getPhotofile() {
+		return photofile;
+	}
+	public void setPhotofile(MultipartFile photofile) {
+		this.photofile = photofile;
 	}
 	public Timestamp getRegDate() {
 		return regDate;
